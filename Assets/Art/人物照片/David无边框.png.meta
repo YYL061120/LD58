@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1b900de791305354e9e6a712c0a360c0
+guid: fffd5599801c4584a91b2c47d29e7156
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3043047319841191402
-    second: Weixin Image_20251003102109_13_73_0
+      213: 2360382915475811618
+    second: "David\u65E0\u8FB9\u6846_0"
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -152,13 +152,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Weixin Image_20251003102109_13_73_0
+      name: "David\u65E0\u8FB9\u6846_0"
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1098
-        height: 324
+        x: 65
+        y: 20
+        width: 178
+        height: 205
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -167,8 +167,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ae5b6d52a631b3a20800000000000000
-      internalID: 3043047319841191402
+      spriteID: 22d26da71c3c1c020800000000000000
+      internalID: 2360382915475811618
       vertices: []
       indices: 
       edges: []
@@ -187,7 +187,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Weixin Image_20251003102109_13_73_0: 3043047319841191402
+      "David\u65E0\u8FB9\u6846_0": 2360382915475811618
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

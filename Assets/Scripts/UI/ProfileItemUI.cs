@@ -37,38 +37,39 @@ namespace DebtJam
             }
         }
 
+        // ProfileItemDisplay_TMP.cs
+        private static readonly string[] kOrder = { "Name", "Phone", "Address" };
+        // 没配置的键排到后面
+        private static int GetPriority(string key)
+        {
+            for (int i = 0; i < kOrder.Length; i++)
+                if (string.Equals(kOrder[i], key, System.StringComparison.OrdinalIgnoreCase))
+                    return i;
+            return 999; // 其他键
+        }
+
         private string BuildFactsPreview(CaseRuntime rt)
         {
-            var sb = new StringBuilder();
+            var sb = new System.Text.StringBuilder();
 
             var ordered = rt.facts.Values
                 .OrderBy(f => f.state == FactState.Unknown) // Unknown 放后
-                .ThenBy(f => f.label)
+                .ThenBy(f => GetPriority(f.key))            // ← 自定义顺序
+                .ThenBy(f => f.label)                       // 同优先级按名字
                 .Take(maxFactsToShow);
 
-            int count = 0;
             foreach (var f in ordered)
             {
                 if (f.state == FactState.Unknown)
-                {
                     sb.AppendLine($"{f.label}: <alpha=#55>████（模糊）</alpha>");
-                }
                 else if (!string.IsNullOrEmpty(f.oldValueStriked))
-                {
                     sb.AppendLine($"{f.label}: <s>{f.oldValueStriked}</s>  {f.value}");
-                }
                 else
-                {
-                    // 如果想把“已知假”标个颜色/标签，也可以：
-                    // var tag = f.state == FactState.Fake ? "（假）" : "";
-                    // sb.AppendLine($"{f.label}: {f.value}{tag}");
                     sb.AppendLine($"{f.label}: {f.value}");
-                }
-                count++;
             }
-
-            if (rt.facts.Count > count) sb.AppendLine("…");
+            if (rt.facts.Count > maxFactsToShow) sb.AppendLine("…");
             return sb.ToString();
         }
+
     }
 }

@@ -1,74 +1,114 @@
-﻿using UnityEngine;
+﻿// Assets/Scripts/UI/ProfilePanel_DisplayOnly_TMP.cs
 using System.Linq;
 using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 namespace DebtJam
 {
     /// <summary>
-    /// 只显示可见且未完结(Pending)的欠债人（不提供点击）。
-    /// Content 节点用 VerticalLayoutGroup + ContentSizeFitter 布局。
-    /// 文本使用 TextMeshPro。
+    /// 只读的 Profile 列表（TextMeshPro），支持“关闭按钮/ESC 关闭”
     /// </summary>
     public class ProfilePanel_DisplayOnly_TMP : MonoBehaviour
     {
         [Header("UI")]
-        [Tooltip("承载条目的父节点（挂 VerticalLayoutGroup + ContentSizeFitter）")]
-        public Transform contentRoot;
+        public Transform contentRoot;                   // 列表容器（Vertical Layout Group）
+        public ProfileItemDisplay_TMP itemPrefab;       // 每一项的预制（里头有头像/标题/词条）
+        public GameObject emptyStateGO;                 // 列表为空时显示（可选）
 
-        [Tooltip("条目预制体（需要挂 ProfileItemDisplay_TMP 脚本）")]
-        public ProfileItemDisplay_TMP itemPrefab;
+        [Header("Close")]
+        public Button closeButton;                      // 叉叉按钮（可选）
+        public bool closeOnEscape = true;               // 按 Esc 关闭
 
-        [Header("选项")]
-        [Tooltip("是否隐藏 DeadEnd（默认 true：只显示 Pending）")]
-        public bool hideDeadEnd = true;
+        // 缓存已生成的项，方便清理
+        readonly List<ProfileItemDisplay_TMP> _spawned = new();
 
-        [Tooltip("无可展示档案时的占位物体（可选）")]
-        public GameObject emptyStateGO;
+        // 事件委托缓存，避免解绑不上
+        System.Action rosterChangedHandler;
 
-        private readonly List<ProfileItemDisplay_TMP> _spawned = new();
+        void Awake()
+        {
+            rosterChangedHandler = Refresh;
+
+            if (closeButton)
+                closeButton.onClick.AddListener(CloseSelf);
+        }
 
         void OnEnable()
         {
             if (CaseManager.I != null)
-                CaseManager.I.OnRosterChanged += Refresh;
-            Refresh();
+                CaseManager.I.OnRosterChanged += rosterChangedHandler;
+
+            // 稳妥：晚一帧刷新，避免 CaseManager 还没 Build
+            StartCoroutine(RefreshNextFrame());
         }
 
         void OnDisable()
         {
             if (CaseManager.I != null)
-                CaseManager.I.OnRosterChanged -= Refresh;
+                CaseManager.I.OnRosterChanged -= rosterChangedHandler;
+
+            // 可选：关闭时清空
+            ClearAll();
         }
 
+        void Update()
+        {
+            if (closeOnEscape && Input.GetKeyDown(KeyCode.Escape))
+                CloseSelf();
+        }
+
+        System.Collections.IEnumerator RefreshNextFrame()
+        {
+            yield return null;
+            Refresh();
+        }
+
+        public void CloseSelf()
+        {
+            gameObject.SetActive(false);
+        }
+
+        void ClearAll()
+        {
+            for (int i = _spawned.Count - 1; i >= 0; i--)
+                if (_spawned[i]) Destroy(_spawned[i].gameObject);
+            _spawned.Clear();
+        }
+
+        /// <summary>重建可见案件的 Profile 列表</summary>
         public void Refresh()
         {
-            Debug.Log($"Roster count = {CaseManager.I?.runtimeById?.Count}");
-            if (!contentRoot || !itemPrefab || CaseManager.I == null) return;
+            if (!contentRoot || !itemPrefab) return;
 
-            // 1) 清空 Content 下的所有子物体（包括误摆进去的模板）
-            for (int i = contentRoot.childCount - 1; i >= 0; i--)
-                Destroy(contentRoot.GetChild(i).gameObject);
-            _spawned.Clear();
-
-            var cm = CaseManager.I;
-
-            IEnumerable<CaseRuntime> source = cm.runtimeById.Values.Where(r => r.isVisible);
-            if (hideDeadEnd)
-                source = source.Where(r => r.outcome == CaseOutcome.Pending);
-            else
-                source = source.Where(r => r.outcome != CaseOutcome.Collected);
-
-            var list = source.OrderBy(r => r.debtorId).ToList();
-
-            if (emptyStateGO) emptyStateGO.SetActive(list.Count == 0);
-
-            foreach (var rt in list)
+            // CaseManager 还没建立 → 晚一帧再试
+            if (CaseManager.I == null || CaseManager.I.runtimeById.Count == 0)
             {
-                var so = cm.GetSO(rt.debtorId);
-                var item = Instantiate(itemPrefab, contentRoot);
-                item.Setup(rt, so);            // ← 这里会把名字/金额/词条全部写进去
-                _spawned.Add(item);
+                StartCoroutine(RefreshNextFrame());
+                return;
             }
+
+            ClearAll();
+
+            IEnumerable<CaseRuntime> source = CaseManager.I.runtimeById.Values
+                .Where(r => r.isVisible)                    // 只显示“出现在 Profile 的人”
+                .OrderBy(r => r.debtorId);
+
+            int count = 0;
+            foreach (var rt in source)
+            {
+                var so = CaseManager.I.GetSO(rt.debtorId);
+                if (!so) continue;
+
+                var item = Instantiate(itemPrefab, contentRoot);
+                item.Setup(rt, so);                         // 你的项脚本已有此方法
+                _spawned.Add(item);
+                count++;
+            }
+
+            if (emptyStateGO) emptyStateGO.SetActive(count == 0);
+            if (count == 0) Debug.Log("[ProfilePanel] list is empty.");
         }
     }
 }

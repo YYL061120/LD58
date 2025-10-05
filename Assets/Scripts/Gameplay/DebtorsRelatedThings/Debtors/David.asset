@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eec74523eaa25e241b584d15601b598c, type: 3}
-  m_Name: New Debtor Profile SO
+  m_Name: David
   m_EditorClassIdentifier: 
-  debtorId: 
-  displayName: 
-  portrait: {fileID: 0}
+  debtorId: A
+  displayName: David
+  portrait: {fileID: 4819657417523782771, guid: f1061e6161f0e984aac3f8dfd1442314, type: 3}
   description: 
-  amountOwed: 0
-  hasPhoneAtStart: 0
+  amountOwed: 3000
+  hasPhoneAtStart: 1
   phoneNumber: 
-  hasAddressAtStart: 0
+  hasAddressAtStart: 1
   address: 
-  hasEmailAtStart: 0
+  hasEmailAtStart: 1
   email: 
   initialFacts: []
   startOutcome: 0

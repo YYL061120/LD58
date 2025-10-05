@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eec74523eaa25e241b584d15601b598c, type: 3}
+  m_Name: New Debtor Profile SO 5
+  m_EditorClassIdentifier: 
+  debtorId: 
+  displayName: 
+  portrait: {fileID: 0}
+  description: 
+  amountOwed: 0
+  hasPhoneAtStart: 0
+  phoneNumber: 
+  hasAddressAtStart: 0
+  address: 
+  hasEmailAtStart: 0
+  email: 
+  initialFacts: []
+  startOutcome: 0
+  callCard: {fileID: 0}
+  smsCard: {fileID: 0}
+  visitCard: {fileID: 0}
+  visibleAfterCollectedTheseIds: []

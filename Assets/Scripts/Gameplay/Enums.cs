@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace DebtJam
 {
     public enum ActionType { Call, SMS, Visit }

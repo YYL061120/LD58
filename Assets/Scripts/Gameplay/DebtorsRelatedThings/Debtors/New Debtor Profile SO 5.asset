@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eec74523eaa25e241b584d15601b598c, type: 3}
   m_Name: New Debtor Profile SO 5
   m_EditorClassIdentifier: 
-  debtorId: 
+  debtorId: F
   displayName: 
   portrait: {fileID: 0}
   description: 
@@ -28,4 +28,5 @@ MonoBehaviour:
   callCard: {fileID: 0}
   smsCard: {fileID: 0}
   visitCard: {fileID: 0}
-  visibleAfterCollectedTheseIds: []
+  visibleAfterCollectedTheseIds:
+  - B

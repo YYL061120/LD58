@@ -38,8 +38,9 @@ namespace DebtJam
     public class FactDef
     {
         public string key;     // "RealName","Address","PhoneOwner"…
-        public string uiLabel; // UI标签
+        public string label; // UI标签
         public string value;
         public FactVisibility visibility = FactVisibility.Unknown;
+        public string oldValueStriked;
     }
 }

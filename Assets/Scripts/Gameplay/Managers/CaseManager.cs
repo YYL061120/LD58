@@ -1,73 +1,115 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using System;
 using System.Linq;
 
 namespace DebtJam
 {
+    [DefaultExecutionOrder(-100)] // 确保先于 UI 初始化
     public class CaseManager : MonoBehaviour
     {
         public static CaseManager I { get; private set; }
 
-        public event System.Action<CaseRuntime> OnCaseChanged;
-
-        [Header("内容入口")]
+        [Header("All Debtors (SO)")]
         public List<DebtorProfileSO> allDebtors = new();
 
-        [Header("运行态")]
-        public Dictionary<string, CaseRuntime> runtimeById = new();
+        // 运行态字典（效果/条件会访问它）
+        public readonly Dictionary<string, CaseRuntime> runtimeById = new();
+
         public CaseRuntime currentCase { get; private set; }
 
-        public event Action OnRosterChanged;
+        // UI 订阅
+        public event System.Action OnRosterChanged;
+        public event System.Action<CaseRuntime> OnCaseChanged;
 
         void Awake()
         {
             if (I && I != this) { Destroy(gameObject); return; }
-            I = this; DontDestroyOnLoad(gameObject);
+            I = this;
         }
 
-        void Start()
+        void Start() { BuildRuntime(); }
+
+        // ========= 构建运行态 =========
+        public void BuildRuntime()
         {
-            foreach (var so in allDebtors)
+            runtimeById.Clear();
+
+            foreach (var so in allDebtors.Where(s => s != null))
             {
-                bool visible = so.visibleAfterCollectedTheseIds.Count == 0; // 没前置则开局可见（A）
-                runtimeById[so.debtorId] = new CaseRuntime(so, visible);
+                bool visibleAtStart = (so.visibleAfterCollectedTheseIds == null || so.visibleAfterCollectedTheseIds.Count == 0);
+                if (string.IsNullOrWhiteSpace(so.debtorId))
+                {
+                    Debug.LogError($"[CaseManager] Debtor '{so.name}' has empty debtorId!");
+                    continue;
+                }
+                runtimeById[so.debtorId] = new CaseRuntime(so, visibleAtStart);
             }
-            var first = runtimeById.Values.FirstOrDefault(r => r.isVisible);
-            if (first != null) SelectCase(first.debtorId);
+
+            currentCase = runtimeById.Values.FirstOrDefault(r => r.isVisible && r.outcome == CaseOutcome.Pending);
+            Debug.Log($"[CaseManager] built {runtimeById.Count} cases, current={(currentCase != null ? currentCase.debtorId : "<null>")}");
+
+            OnRosterChanged?.Invoke();
+            if (currentCase != null) OnCaseChanged?.Invoke(currentCase);
         }
+
+        // ========= 提供便捷访问 =========
+        public DebtorProfileSO GetSO(string id) => allDebtors.FirstOrDefault(d => d && d.debtorId == id);
+        public bool TryGetRuntime(string id, out CaseRuntime rt) => runtimeById.TryGetValue(id, out rt);
 
         public void SelectCase(string debtorId)
         {
-            if (runtimeById.TryGetValue(debtorId, out var rt))
-            { currentCase = rt; OnCaseChanged?.Invoke(rt); }
+            if (!runtimeById.TryGetValue(debtorId, out var rt)) return;
+            currentCase = rt;
+            OnCaseChanged?.Invoke(rt);
         }
 
-        public DebtorProfileSO GetSO(string id) => allDebtors.Find(d => d.debtorId == id);
+        // ========= 被效果调用：修改 outcome，并推动解锁 =========
+        public void SetOutcome(string debtorId, CaseOutcome outcome)
+        {
+            if (!runtimeById.TryGetValue(debtorId, out var rt)) return;
+            if (rt.outcome == outcome) return;
+            rt.outcome = outcome;
 
-        // 在某个案件收款成功后调用：按 “谁已 Collected” 解锁后续
+            UnlockByProgress();
+            OnRosterChanged?.Invoke();
+
+            // 若当前已完结，切到下一个可见 & Pending 的
+            if (currentCase == null || currentCase.outcome != CaseOutcome.Pending)
+            {
+                var next = runtimeById.Values.FirstOrDefault(r => r.isVisible && r.outcome == CaseOutcome.Pending);
+                if (next != null) { currentCase = next; OnCaseChanged?.Invoke(currentCase); }
+            }
+        }
+
+        /// <summary>谁被收款（Collected）之后，满足前置的人变可见</summary>
         public void UnlockByProgress()
         {
             var collected = runtimeById.Values.Where(r => r.outcome == CaseOutcome.Collected)
                                               .Select(r => r.debtorId).ToHashSet();
             bool changed = false;
 
-            foreach (var so in allDebtors)
+            foreach (var so in allDebtors.Where(s => s != null))
             {
-                var rt = runtimeById[so.debtorId];
+                if (!runtimeById.TryGetValue(so.debtorId, out var rt)) continue;
                 if (rt.isVisible) continue;
-                if (so.visibleAfterCollectedTheseIds.All(id => collected.Contains(id)))
-                { rt.isVisible = true; changed = true; }
+
+                bool allPreCollected = (so.visibleAfterCollectedTheseIds == null || so.visibleAfterCollectedTheseIds.Count == 0)
+                    || so.visibleAfterCollectedTheseIds.All(id => collected.Contains(id));
+
+                if (allPreCollected) { rt.isVisible = true; changed = true; }
             }
+
             if (changed) OnRosterChanged?.Invoke();
         }
 
+        public bool AllCasesFinished() => runtimeById.Values.All(r => r.outcome != CaseOutcome.Pending);
+
+        // ========= 给效果/条件通知“运行态变化”（可让 UI 刷新）=========
         public void NotifyCaseChanged(CaseRuntime rt)
         {
-            OnCaseChanged?.Invoke(rt);
+            if (rt == null) return;
+            if (currentCase == null || currentCase.debtorId == rt.debtorId)
+                OnCaseChanged?.Invoke(rt); // 当前对象被改 → 刷新 UI
         }
-
-        public bool AllCasesFinished() => runtimeById.Values.All(r => r.outcome != CaseOutcome.Pending);
     }
 }
-

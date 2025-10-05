@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debtorId: A
   displayName: David
-  portrait: {fileID: 4819657417523782771, guid: f1061e6161f0e984aac3f8dfd1442314, type: 3}
+  portrait: {fileID: 4819657417523782771, guid: b4ecaa35694a7be4b8437de91c408541, type: 3}
   description: 
   amountOwed: 3000
   hasPhoneAtStart: 1
@@ -22,10 +22,21 @@ MonoBehaviour:
   hasAddressAtStart: 1
   address: College Dorm
   initialFacts:
-  - key: 
-    uiLabel: 
-    value: 
-    visibility: 0
+  - key: Name
+    label: Name
+    value: David
+    visibility: 1
+    oldValueStriked: 
+  - key: Phone
+    label: Phone
+    value: 2137160915
+    visibility: 1
+    oldValueStriked: 
+  - key: Address
+    label: Address
+    value: College Dorm
+    visibility: 1
+    oldValueStriked: 
   startOutcome: 0
   callCard: {fileID: 11400000, guid: 0eeb219adf87be645881e447bc43da72, type: 2}
   smsCard: {fileID: 11400000, guid: 8379e13161e92db429c57a3ce9322b7b, type: 2}

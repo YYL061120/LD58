@@ -5,13 +5,13 @@ namespace DebtJam
     [CreateAssetMenu(menuName = "DebtJam/Conditions/Has Contact")]
     public class HasContactCondition : ConditionSO
     {
-        public ContactType type;
+        public ContactKind type;
         public override bool Evaluate(CaseRuntime rt, GameClock clock)
         {
             return type switch
             {
-                ContactType.Phone => rt.hasPhone,
-                ContactType.Address => rt.hasAddress,
+                ContactKind.Phone => rt.hasPhone,
+                ContactKind.Address => rt.hasAddress,
                 //ContactType.Email => rt.hasEmail,
                 _ => false
             };

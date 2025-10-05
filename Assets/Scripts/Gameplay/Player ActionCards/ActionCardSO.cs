@@ -8,6 +8,7 @@ namespace DebtJam
     {
         public ActionType actionType;         // Call / SMS / Visit
         [TextArea] public string description; // 策划备注
+        public List<EffectSO> onEnterEffects = new(); // ✅ 新增：进入面板时立即播放的效果（不扣时间）
         public List<ActionOption> options = new();
     }
 

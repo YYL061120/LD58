@@ -16,7 +16,7 @@ namespace DebtJam
         [Header("初始联系方式")]
         public bool hasPhoneAtStart; public string phoneNumber;
         public bool hasAddressAtStart; public string address;
-        public bool hasEmailAtStart; public string email;
+        //public bool hasEmailAtStart;/* public string email;*/
 
         [Header("初始词条（Unknown=模糊；Fake=错误；True=正确）")]
         public List<FactDef> initialFacts = new();
@@ -38,8 +38,9 @@ namespace DebtJam
     public class FactDef
     {
         public string key;     // "RealName","Address","PhoneOwner"…
-        public string uiLabel; // UI标签
+        public string label; // UI标签
         public string value;
         public FactVisibility visibility = FactVisibility.Unknown;
+        public string oldValueStriked;
     }
 }

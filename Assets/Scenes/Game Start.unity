@@ -950,6 +950,10 @@ MonoBehaviour:
   smsPanel: {fileID: 1538066652}
   profilePanel: {fileID: 1549527993}
   othersToHideWhenScreenOpen: []
+  interactableObjects:
+  - {fileID: 1164163242}
+  - {fileID: 1997808047}
+  - {fileID: 919906383}
 --- !u!1 &451132455
 GameObject:
   m_ObjectHideFlags: 0

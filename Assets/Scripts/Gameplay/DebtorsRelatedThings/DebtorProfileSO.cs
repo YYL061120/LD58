@@ -16,7 +16,7 @@ namespace DebtJam
         [Header("初始联系方式")]
         public bool hasPhoneAtStart; public string phoneNumber;
         public bool hasAddressAtStart; public string address;
-        public bool hasEmailAtStart; public string email;
+        //public bool hasEmailAtStart;/* public string email;*/
 
         [Header("初始词条（Unknown=模糊；Fake=错误；True=正确）")]
         public List<FactDef> initialFacts = new();

@@ -12,7 +12,7 @@ namespace DebtJam
             {
                 ContactType.Phone => rt.hasPhone,
                 ContactType.Address => rt.hasAddress,
-                ContactType.Email => rt.hasEmail,
+                //ContactType.Email => rt.hasEmail,
                 _ => false
             };
         }

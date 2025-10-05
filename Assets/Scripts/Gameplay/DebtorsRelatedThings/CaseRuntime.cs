@@ -34,7 +34,7 @@ namespace DebtJam
 
             hasPhone = so.hasPhoneAtStart; phoneNumber = so.phoneNumber;
             hasAddress = so.hasAddressAtStart; address = so.address;
-            hasEmail = so.hasEmailAtStart; email = so.email;
+            //hasEmail = so.hasEmailAtStart; email = so.email;
 
             outcome = so.startOutcome;
             isVisible = visible;

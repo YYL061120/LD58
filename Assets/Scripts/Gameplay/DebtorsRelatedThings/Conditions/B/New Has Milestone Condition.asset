@@ -9,9 +9,8 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c95614b51d0148a4c9293490d44ca01c, type: 3}
-  m_Name: Visit
+  m_Script: {fileID: 11500000, guid: 1753d835303e3844d9cd75a623f6c4a6, type: 3}
+  m_Name: New Has Milestone Condition
   m_EditorClassIdentifier: 
-  actionType: 2
-  description: 
-  options: []
+  milestone: B_SMS_Resist
+  requireAbsent: 0

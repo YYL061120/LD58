@@ -30,6 +30,10 @@ namespace DebtJam
             _debtorId = debtorId; _card = card;
             var so = CaseManager.I.GetSO(debtorId);
             if (leftAvatar) leftAvatar.sprite = so.portrait;
+
+            // ✅ 先执行“进入时效果”（不扣时间）
+            RunEnterEffects(debtorId, card);
+
             BuildOptions();
             gameObject.SetActive(true);
         }
@@ -55,6 +59,15 @@ namespace DebtJam
                     // 欠款人回复由 ShowLineEffect 触发
                 });
             }
+        }
+
+        void RunEnterEffects(string debtorId, ActionCardSO card)
+        {
+            if (card == null || card.onEnterEffects == null || card.onEnterEffects.Count == 0) return;
+            if (!CaseManager.I.runtimeById.TryGetValue(debtorId, out var rt)) return;
+
+            foreach (var fx in card.onEnterEffects)
+                if (fx != null) fx.Apply(rt);   // 不走 ActionExecutor，所以不会扣时间/判条件
         }
 
         // 给 ShowLineEffect 调用

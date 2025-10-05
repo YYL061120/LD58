@@ -13,7 +13,7 @@ namespace DebtJam
             {
                 case ContactType.Phone: rt.hasPhone = true; rt.phoneNumber = value; break;
                 case ContactType.Address: rt.hasAddress = true; rt.address = value; break;
-                case ContactType.Email: rt.hasEmail = true; rt.email = value; break;
+                /*case ContactType.Email: rt.hasEmail = true;*/ rt.email = value; break;
             }
         }
         public override string GetReadable() => $"写入{type}:{value}";

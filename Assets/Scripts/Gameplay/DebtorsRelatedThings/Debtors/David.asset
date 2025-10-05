@@ -18,14 +18,16 @@ MonoBehaviour:
   description: 
   amountOwed: 3000
   hasPhoneAtStart: 1
-  phoneNumber: 
+  phoneNumber: 2137160915
   hasAddressAtStart: 1
-  address: 
-  hasEmailAtStart: 1
-  email: 
-  initialFacts: []
+  address: College Dorm
+  initialFacts:
+  - key: 
+    uiLabel: 
+    value: 
+    visibility: 0
   startOutcome: 0
-  callCard: {fileID: 0}
-  smsCard: {fileID: 0}
-  visitCard: {fileID: 0}
+  callCard: {fileID: 11400000, guid: 0eeb219adf87be645881e447bc43da72, type: 2}
+  smsCard: {fileID: 11400000, guid: 8379e13161e92db429c57a3ce9322b7b, type: 2}
+  visitCard: {fileID: 11400000, guid: 7a98412dcd43c144d95f8f545a0a97a8, type: 2}
   visibleAfterCollectedTheseIds: []

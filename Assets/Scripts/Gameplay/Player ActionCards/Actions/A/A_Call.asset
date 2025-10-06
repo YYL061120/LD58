@@ -12,27 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c95614b51d0148a4c9293490d44ca01c, type: 3}
   m_Name: A_Call
   m_EditorClassIdentifier: 
-  actionType: 0
-  description: 
-  onEnterEffects:
-  - {fileID: 11400000, guid: 6239977db8090794ab5fc42593b3e8d3, type: 2}
-  options:
-  - optionText: "This is from the debt collection agency. You need to make your payment
-      \u2014 now."
-    conditions: []
-    effects:
-    - {fileID: 11400000, guid: 23097c1f761a2f44caa9548a3238a706, type: 2}
-    - {fileID: 11400000, guid: 85e48e9442445224facd66748f5fd2d3, type: 2}
-    - {fileID: 11400000, guid: 4c1f5a86f6f06a5418c8e1f27574b4ac, type: 2}
-    - {fileID: 11400000, guid: 6408b24384ad17845a5a977dc68f401d, type: 2}
-    - {fileID: 11400000, guid: 5446e967d2f23e242833efe16996ae5c, type: 2}
-  - optionText: "Hi, I\u2019m calling about your $3,000 bill. There\u2019s a small
-      issue I\u2019d like to clear up with you."
-    conditions: []
-    effects:
-    - {fileID: 11400000, guid: 23097c1f761a2f44caa9548a3238a706, type: 2}
-    - {fileID: 11400000, guid: 85e48e9442445224facd66748f5fd2d3, type: 2}
-    - {fileID: 11400000, guid: 4c1f5a86f6f06a5418c8e1f27574b4ac, type: 2}
-    - {fileID: 11400000, guid: 6408b24384ad17845a5a977dc68f401d, type: 2}
-    - {fileID: 11400000, guid: 5446e967d2f23e242833efe16996ae5c, type: 2}
-    - {fileID: 11400000, guid: 5446e967d2f23e242833efe16996ae5c, type: 2}
+  cardId: 
+  onEnterEffects: []
+  steps:
+  - stepId: 1
+    gateConditions: []
+    gateBlockedNpcLine: 
+    gateEndsDialogue: 0
+    npcLine: "Hello? Who\u2026 who is this?"
+    onEnterEffects: []
+    showOptions: 1
+    options:
+    - optionText: 
+      playerLineForUI: This is a representative from the Debt Recovery Agency. You
+        need to make your payment immediately.
+      conditions: []
+      effects:
+      - {fileID: 11400000, guid: 23097c1f761a2f44caa9548a3238a706, type: 2}
+      - {fileID: 11400000, guid: 85e48e9442445224facd66748f5fd2d3, type: 2}
+      - {fileID: 11400000, guid: 4c1f5a86f6f06a5418c8e1f27574b4ac, type: 2}
+      - {fileID: 11400000, guid: 6408b24384ad17845a5a977dc68f401d, type: 2}
+      - {fileID: 0}
+      endsDialogue: 0
+      triggerCollected: 0
+      nextStepId: 
+    - optionText: 
+      playerLineForUI: "I\u2019m calling about your $3,000 invoice\u2014there seems
+        to be an issue I\u2019d like to clarify."
+      conditions: []
+      effects:
+      - {fileID: 11400000, guid: 23097c1f761a2f44caa9548a3238a706, type: 2}
+      - {fileID: 11400000, guid: 85e48e9442445224facd66748f5fd2d3, type: 2}
+      - {fileID: 11400000, guid: 4c1f5a86f6f06a5418c8e1f27574b4ac, type: 2}
+      - {fileID: 11400000, guid: 6408b24384ad17845a5a977dc68f401d, type: 2}
+      - {fileID: 0}
+      endsDialogue: 0
+      triggerCollected: 0
+      nextStepId: 
+  entryStepId: 

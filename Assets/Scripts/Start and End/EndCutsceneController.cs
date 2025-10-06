@@ -46,7 +46,7 @@ namespace DebtJam
 
             yield return ShowLine("Boss:\n Mob... let me see how you did this week.");
             yield return ShowLine("(Pause)");
-            yield return ShowLine("Oh no... only this much money?");
+            yield return ShowLine("Oh no... only $10,000?");
             yield return ShowLine("Do you even realize what kind of situation our company is in right now?");
             yield return ShowLine("(He taps the table lightly)");
             yield return ShowLine("I don’t need excuses. I need results.");

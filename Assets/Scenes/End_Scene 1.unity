@@ -147,7 +147,7 @@ AudioSource:
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
-  m_Resource: {fileID: 8300000, guid: be7de8c15cc1cee5685b2736ba2f1c3f, type: 3}
+  m_Resource: {fileID: 8300000, guid: d08ff1efde40b1947827f20eeb376310, type: 3}
   m_PlayOnAwake: 1
   m_Volume: 0.497
   m_Pitch: 1
@@ -475,6 +475,7 @@ GameObject:
   - component: {fileID: 624073945}
   - component: {fileID: 624073944}
   - component: {fileID: 624073946}
+  - component: {fileID: 624073947}
   m_Layer: 0
   m_Name: StartCutsceneController
   m_TagString: Untagged
@@ -601,7 +602,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 624073943}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a4d2ec2c873acc34bb96c855b03fc4e9, type: 3}
   m_Name: 
@@ -613,6 +614,25 @@ MonoBehaviour:
   soundCooldown: 1
   fadeDuration: 1
   waitAfterLine: 1
+--- !u!114 &624073947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624073943}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 484db667bf9d2ee46b2331cc775c6ce2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bossImage: {fileID: 901420762}
+  typewriter: {fileID: 718100835}
+  dialogueText: {fileID: 718100836}
+  fadeDuration: 1
+  autoWaitPerLine: 2.5
+  typeSound: {fileID: 1364513944}
+  soundCooldown: 1
 --- !u!1 &718100833
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,76 +1,74 @@
-﻿// Assets/Scripts/Gameplay/Player ActionCards/ActionCardSO.cs
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DebtJam
 {
-    /// <summary>
-    /// 一张“行动卡”（打电话/短信/上门）的完整对话流程。
-    /// 由多个 Step 组成：进入 Step → 执行 onEnterEffects →（可选）显示 NPC 台词 →（可选）给出玩家选项 → 根据选项跳下一步。
-    /// </summary>
     [CreateAssetMenu(menuName = "DebtJam/Action Card")]
     public class ActionCardSO : ScriptableObject
     {
-        [Header("步骤（按顺序配置）")]
+        [Tooltip("卡片名，仅编辑用")]
+        public string cardId;
+
+        [Tooltip("进入卡片时可先触发的效果（不扣时间）")]
+        public List<EffectSO> onEnterEffects = new();
+
+        [Tooltip("对话步骤表")]
         public List<ActionStep> steps = new();
 
-        /// <summary>给当前案件选择“第一个可用 Step”。逐个检测 gate 条件，命中即返回；都不满足就回退到 steps[0]。</summary>
+        [Tooltip("入口 Step Id（留空则用列表第一个）")]
+        public string entryStepId;
+
+        // —— 运行期查询：根据 CaseRuntime 决定“真正入口”
         public ActionStep GetStepFor(CaseRuntime rt)
         {
-            if (steps == null || steps.Count == 0) return null;
-
-            // 有 gate 条件且满足 → 作为入口
-            foreach (var s in steps)
-                if (s == null || s.GateMet(rt)) return s;
-
-            return steps[0];
+            // 先选 entryStepId；没有就第一个
+            var step = string.IsNullOrWhiteSpace(entryStepId) ? steps.FirstOrDefault()
+                                                              : steps.FirstOrDefault(s => s.stepId == entryStepId);
+            return step;
         }
 
-        /// <summary>根据当前 Step 和玩家所选 Option 计算下一步。</summary>
-        public ActionStep GetNextStep(ActionStep cur, ActionOption chosen, CaseRuntime rt)
+        // 用于从当前 Step 和玩家所选 Option 决定下一步
+        public ActionStep GetNextStep(ActionStep current, ActionOption chosen, CaseRuntime rt)
         {
-            // 选项指定了覆盖的下一步 → 用它
-            if (chosen != null && chosen.nextStepOverride != null)
-                return chosen.nextStepOverride;
-
-            // 否则用 Step 自带的 nextStep
-            if (cur != null && cur.nextStep != null)
-                return cur.nextStep;
-
-            // 都没配，尝试用“列表顺序的下一位”兜底
-            if (cur != null && steps != null)
-            {
-                int idx = steps.IndexOf(cur);
-                if (idx >= 0 && idx + 1 < steps.Count) return steps[idx + 1];
-            }
-            return null;
+            if (chosen == null || string.IsNullOrEmpty(chosen.nextStepId)) return null;
+            return steps.FirstOrDefault(s => s.stepId == chosen.nextStepId);
         }
     }
-
-    // ===================== 数据结构 =====================
 
     [System.Serializable]
     public class ActionStep
     {
-        [Header("作为入口 Step 的门槛（全部满足）")]
+        [Tooltip("唯一 Id")]
+        public string stepId;
+
+        [Header("可选：进入本 Step 前的“守门条件”")]
+        [Tooltip("全部满足才允许进入，否则走“被挡台词”")]
         public ConditionSO[] gateConditions;
+        [Tooltip("守门条件不满足时的左侧台词（例如：对方抵触/门卫说已搬走）")]
+        [TextArea] public string gateBlockedNpcLine;
+        [Tooltip("被挡后是否立刻结束对话（true=结束；false=虽然被挡但仍展示选项）")]
+        public bool gateEndsDialogue = true;
 
-        [Header("进入该 Step 时立即执行（不扣时间）")]
-        public EffectSO[] onEnterEffects;
-
-        [Header("进入该 Step 时展示的台词（谁先说、说几句都可交给 Effects 控制；这里是一个快捷位：NPC 左气泡）")]
+        [Header("正式台词（通过守门后才会播放）")]
         [TextArea] public string npcLine;
 
-        [Header("此 Step 是否把“选项按钮”展示出来")]
-        public bool showOptions = true;
+        [Header("进入本 Step 即刻生效的效果（不扣时间）")]
+        public EffectSO[] onEnterEffects;
 
-        [Header("玩家可选项（可为空）")]
+        [Header("显示选项")]
+        public bool showOptions = true;
         public List<ActionOption> options = new();
 
-        [Header("默认下一步（当选项未覆盖 nextStep 时使用）")]
-        public ActionStep nextStep;
+        // 供 TalkUIHub 调用
+        public void RunEnter(CaseRuntime rt)
+        {
+            if (onEnterEffects == null) return;
+            foreach (var fx in onEnterEffects) if (fx != null) fx.Apply(rt);
+        }
 
-        public bool GateMet(CaseRuntime rt)
+        // 守门检测
+        public bool GatePassed(CaseRuntime rt)
         {
             if (gateConditions == null || gateConditions.Length == 0) return true;
             foreach (var c in gateConditions)
@@ -80,32 +78,31 @@ namespace DebtJam
             }
             return true;
         }
-
-        public void RunEnter(CaseRuntime rt)
-        {
-            if (onEnterEffects != null)
-                foreach (var e in onEnterEffects)
-                    if (e != null) e.Apply(rt);
-        }
     }
 
     [System.Serializable]
     public class ActionOption
     {
-        [Header("按钮文字 / 玩家台词（右气泡显示该文本；若空则用按钮文字）")]
+        [Tooltip("按钮文案")]
         public string optionText;
-        [TextArea] public string playerLineForUI;
 
-        [Header("选项是否可见/可点（全部满足）")]
+        [Header("玩家台词")]
+        [Tooltip("默认显示给 UI 的玩家台词")]
+        public string playerLineForUI;
+
+        [Header("抽象条件（全部满足才可点）")]
         public ConditionSO[] conditions;
 
-        [Header("点击后执行的效果（Reveal/里程碑/加钱/DeadEnd/Collected 等）")]
+        [Header("点击后效果（不再扣时间）")]
         public EffectSO[] effects;
 
-        [Header("对话控制")]
-        public bool endsDialogue = false;         // 结束对话
-        public bool triggerCollected = false;     // 点完即收款
-        public ActionStep nextStepOverride;       // 覆盖默认下一步
+        [Header("流转控制")]
+        [Tooltip("true=结束对话")]
+        public bool endsDialogue;
+        [Tooltip("true=本次点击算收款（会进 MoneyManager、CaseManager）")]
+        public bool triggerCollected;
+        [Tooltip("下一步 stepId（留空则结束）")]
+        public string nextStepId;
 
         public bool ConditionsMet(CaseRuntime rt)
         {
@@ -118,16 +115,12 @@ namespace DebtJam
             return true;
         }
 
+        public string GetPlayerLineForUI() => playerLineForUI;
+
         public void ApplyEffects(CaseRuntime rt)
         {
             if (effects == null) return;
-            foreach (var e in effects)
-                if (e != null) e.Apply(rt);
-
-            CaseManager.I?.NotifyCaseChanged(rt);
+            foreach (var fx in effects) if (fx != null) fx.Apply(rt);
         }
-
-        public string GetPlayerLineForUI()
-            => string.IsNullOrEmpty(playerLineForUI) ? optionText : playerLineForUI;
     }
 }

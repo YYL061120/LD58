@@ -1,25 +1,29 @@
-﻿using UnityEngine;
+﻿// Assets/Scripts/UI/ProfileItemUI.cs
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Linq;
-using System.Text;
 
 namespace DebtJam
 {
     /// <summary>
-    /// 展示单个欠债人：头像、标题、若干词条（含模糊/划线纠正）；无交互。
-    /// 使用 TextMeshPro（TMP_Text）。
+    /// 仅负责【展示】一个欠债人：头像、标题、若干词条（模糊/划线纠正）。
+    /// 新增：crossOut（打叉/灰显）。遵循最新规则：结局后 Profile 列表中将移除该项；
+    /// 若你想在移除前给一个“打叉动画”提示，可先 PlayCrossOutThenHide() 再由 ProfilePanel 刷新。
     /// </summary>
     public class ProfileItemDisplay_TMP : MonoBehaviour
     {
         [Header("UI")]
         public Image portrait;
-        public TMP_Text title;   // 例：David  欠款：$3000（Pending）
-        public TMP_Text facts;   // 多行词条
+        public TMP_Text title;     // 例：David | $ 3000
+        public TMP_Text facts;     // 多行词条（支持 <s>、<alpha>）
+        [Tooltip("打叉/灰显 叠层（可放置半透明X、蒙版等）")]
+        public GameObject crossOut;
 
         [Header("显示上限")]
         public int maxFactsToShow = 3;
 
+        // —— 外部使用：填充数据（保持你原有调用不变） ——————————
         public void Setup(CaseRuntime rt, DebtorProfileSO so)
         {
             if (portrait) portrait.sprite = so.portrait;
@@ -32,20 +36,47 @@ namespace DebtJam
 
             if (facts)
             {
-                facts.richText = true;       // 允许 <s> 和 <alpha> 标签
+                facts.richText = true;
                 facts.text = BuildFactsPreview(rt);
             }
+
+            // 默认不显示打叉（是否显示交由 ProfilePanel 控制）
+            if (crossOut) crossOut.SetActive(false);
         }
 
-        // ProfileItemDisplay_TMP.cs
+        // —— 新增：立即切换打叉状态（不做动画） ——————————
+        public void SetCrossOut(bool on)
+        {
+            if (crossOut) crossOut.SetActive(on);
+        }
+
+        // —— 新增：打叉提示后自动隐藏（用于“结局后从列表移除”前的过渡） ——————————
+        public void PlayCrossOutThenHide(float delay = 0.6f)
+        {
+            if (!gameObject.activeInHierarchy)
+            {
+                // 若物体不激活，直接隐藏即可
+                gameObject.SetActive(false);
+                return;
+            }
+            if (crossOut) crossOut.SetActive(true);
+            StartCoroutine(CoHide(delay));
+        }
+
+        System.Collections.IEnumerator CoHide(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            gameObject.SetActive(false);
+        }
+
+        // —— 内部：构建词条预览（保持你的逻辑不变） ——————————
         private static readonly string[] kOrder = { "Name", "Phone", "Address" };
-        // 没配置的键排到后面
         private static int GetPriority(string key)
         {
             for (int i = 0; i < kOrder.Length; i++)
                 if (string.Equals(kOrder[i], key, System.StringComparison.OrdinalIgnoreCase))
                     return i;
-            return 999; // 其他键
+            return 999;
         }
 
         private string BuildFactsPreview(CaseRuntime rt)
@@ -54,8 +85,8 @@ namespace DebtJam
 
             var ordered = rt.facts.Values
                 .OrderBy(f => f.state == FactState.Unknown) // Unknown 放后
-                .ThenBy(f => GetPriority(f.key))            // ← 自定义顺序
-                .ThenBy(f => f.label)                       // 同优先级按名字
+                .ThenBy(f => GetPriority(f.key))
+                .ThenBy(f => f.label)
                 .Take(maxFactsToShow);
 
             foreach (var f in ordered)
@@ -70,6 +101,5 @@ namespace DebtJam
             if (rt.facts.Count > maxFactsToShow) sb.AppendLine("…");
             return sb.ToString();
         }
-
     }
 }

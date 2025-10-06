@@ -1,32 +1,32 @@
-﻿using UnityEngine;
+﻿// Assets/Scripts/Gameplay/Managers/GameClock.cs
+using UnityEngine;
 using System;
 
 namespace DebtJam
 {
-    /// <summary>
-    /// 5 天、每天 6 小时的“行动时间”时钟。
-    /// 提供：HasMinutesLeft / Consume / EndDay 以及事件回调。
-    /// </summary>
     public class GameClock : MonoBehaviour
     {
         public static GameClock I { get; private set; }
 
         [Header("Config")]
-        [Tooltip("游戏总天数")]
-        public int totalDays = 5;        // ✅ 五天
-        [Tooltip("每天可用小时数")]
-        public int hoursPerDay = 6;      // ✅ 每天六小时
+        public int totalDays = 5;      // 5 天
+        public int hoursPerDay = 6;    // 每天 6 小时
+
+        [Header("Default Action Costs (minutes)")]
+        // 仅供 Consume(ActionType) 使用；你的 ActionExecutor 仍可用自己的 cost
+        public int callMinutes = 120;   // 打电话 2h
+        public int smsMinutes = 60;    // 发短信 1h
+        public int visitMinutes = 180;   // 上门 3h
 
         [Header("Runtime (readonly)")]
-        [Tooltip("当前天（从 1 开始）")]
         public int currentDay = 1;
-        [Tooltip("当日剩余分钟数")]
         public int minutesLeftToday;
+        public bool waitingNextDay = false; // 日结黑幕弹出后，等待 UI 确认
 
-        public event Action OnDayEnded;
+        // (dayJustEnded, collectedToday, daysLeft)
+        public event Action<int, int, int> OnDayEnded;
         public event Action OnGameEnded;
-        /// <summary>(day, minutesLeft)</summary>
-        public event Action<int, int> OnTimeChanged;
+        public event Action<int, int> OnTimeChanged; // (day, minutesLeft)
 
         void Awake()
         {
@@ -37,75 +37,81 @@ namespace DebtJam
 
         void Start()
         {
-            ResetDayRuntime();
+            minutesLeftToday = hoursPerDay * 60;
+            OnTimeChanged?.Invoke(currentDay, minutesLeftToday);
         }
 
-        /// <summary>是否还有足够分钟可用（语义同 CanAfford）。</summary>
-        public bool HasMinutesLeft(int minutes)
-        {
-            return minutesLeftToday >= Mathf.Max(0, minutes);
-        }
+        // ======== 你原先在 ActionExecutor 里用到的两个接口：完全兼容 ========
 
-        /// <summary>兼容旧接口。</summary>
-        public bool CanAfford(int minutes) => HasMinutesLeft(minutes);
+        /// <summary>检查今天是否还剩足够的分钟（别名，给 ActionExecutor 调）。</summary>
+        public bool HasMinutesLeft(int minutes) => !waitingNextDay && minutesLeftToday >= minutes;
 
-        /// <summary>
-        /// 扣减分钟。成功返回 true；若不足则返回 false（不扣）。
-        /// 扣到 0 会自动触发 EndDay()。
-        /// </summary>
+        /// <summary>按“分钟数”扣时（别名，给 ActionExecutor 调）。成功返回 true。</summary>
         public bool Consume(int minutes)
         {
-            minutes = Mathf.Max(0, minutes);
             if (!HasMinutesLeft(minutes)) return false;
+            Spend(minutes);
+            return true;
+        }
 
-            minutesLeftToday -= minutes;
+        // ======== 之前版本里提供的接口仍然保留 ========
+
+        public bool CanAfford(int minutes) => HasMinutesLeft(minutes);
+
+        /// <summary>按“行动类型”扣时；若用你自己的 cost，可继续走 ActionExecutor 的 GetCost。</summary>
+        public bool Consume(ActionType type)
+        {
+            int cost = type switch
+            {
+                ActionType.Call => callMinutes,
+                ActionType.SMS => smsMinutes,
+                ActionType.Visit => visitMinutes,
+                _ => 0
+            };
+            return Consume(cost);
+        }
+
+        /// <summary>真正扣分钟 & 触发“用尽 → 日结”。</summary>
+        public void Spend(int minutes)
+        {
+            if (waitingNextDay) return;
+
+            minutesLeftToday = Mathf.Max(0, minutesLeftToday - Mathf.Max(0, minutes));
             OnTimeChanged?.Invoke(currentDay, minutesLeftToday);
 
             if (minutesLeftToday <= 0)
                 EndDay();
-
-            return true;
         }
 
-        /// <summary>
-        /// 兼容旧接口：等价于 Consume(minutes)；建议改用 Consume。
-        /// </summary>
-        [Obsolete("Use Consume(int minutes) instead.")]
-        public void Spend(int minutes)
-        {
-            Consume(minutes);
-        }
-
-        /// <summary>可选：退款/补时（正数为加分钟，负数为减分钟）。不会跨天。</summary>
-        public void AddMinutes(int deltaMinutes)
-        {
-            int before = minutesLeftToday;
-            minutesLeftToday = Mathf.Clamp(before + deltaMinutes, 0, hoursPerDay * 60);
-            if (minutesLeftToday != before)
-                OnTimeChanged?.Invoke(currentDay, minutesLeftToday);
-        }
-
-        /// <summary>手动结束当天；若到最后一天则触发 OnGameEnded。</summary>
+        /// <summary>今天用完：只广播“日结”，等待 UI 调 ConfirmNextDay()</summary>
         public void EndDay()
         {
-            OnDayEnded?.Invoke();
+            if (waitingNextDay) return;
+            waitingNextDay = true;
+
+            int collectedToday = MoneyManager.I ? MoneyManager.I.dailyCollected : 0;
+            int daysLeft = Mathf.Max(0, totalDays - currentDay);
+            OnDayEnded?.Invoke(currentDay, collectedToday, daysLeft);
+        }
+
+        /// <summary>日结黑幕点“继续”后进入下一天；最后一天则触发结束。</summary>
+        public void ConfirmNextDay()
+        {
+            if (!waitingNextDay) return;
 
             if (currentDay >= totalDays)
             {
+                waitingNextDay = false;
                 OnGameEnded?.Invoke();
+                return;
             }
-            else
-            {
-                currentDay++;
-                ResetDayRuntime();
-            }
-        }
 
-        /// <summary>重置当日分钟并广播一次时间变更。</summary>
-        void ResetDayRuntime()
-        {
-            minutesLeftToday = Mathf.Max(0, hoursPerDay) * 60;
+            currentDay++;
+            waitingNextDay = false;
+            minutesLeftToday = hoursPerDay * 60;
             OnTimeChanged?.Invoke(currentDay, minutesLeftToday);
+
+            MoneyManager.I?.StartNewDay();
         }
     }
 }

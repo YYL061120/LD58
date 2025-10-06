@@ -3310,7 +3310,7 @@ MonoBehaviour:
   msgLeftPrefab: {fileID: 0}
   msgRightPrefab: {fileID: 0}
   optionRoot: {fileID: 1561410382}
-  optionButtonPrefab: {fileID: 3537888512752731648, guid: 313650776a3db0f4ea49490cd0c05c12, type: 3}
+  optionEntryPrefab: {fileID: 2912490098889062704, guid: 6927da8cba622b144b1db58c077c049d, type: 3}
   items: {fileID: 444965602}
   clickCatcher: {fileID: 667521328}
 --- !u!1 &1791490966

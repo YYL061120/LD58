@@ -27,7 +27,10 @@ namespace DebtJam
 
         [Header("Options")]
         public Transform optionRoot;
-        public Button optionButtonPrefab;
+
+        // 允许根是“父容器”（没有 Button 组件），真正的 Button 在其子物体里
+        [SerializeField] private GameObject optionEntryPrefab;
+
 
         // 运行期状态
         DialogueStyle _style = DialogueStyle.Bubbles;
@@ -44,6 +47,15 @@ namespace DebtJam
 
         bool _waitingClick;          // 本句播完后，是否等待点击继续
         int _pendingLines;           // 由 ShowLeft/Right 增加，用于“这句是否已完全显示”
+
+        // —— 调试辅助 —— 
+        static int sDbgSeq = 0;           // 全局序号
+        int NextSeq() => ++sDbgSeq;
+        void D(string msg) => Debug.Log($"[TalkUIHub] {msg}");
+
+        // —— 保护：同一时刻只能跑一个选项协程 —— 
+        bool _optionRunning = false;
+
 
         // —— 新增：把 ShowLineEffect 的台词排队，逐句播 —— 
         struct PendingLine { public bool left; public string text; }
@@ -128,10 +140,18 @@ namespace DebtJam
 
         void ShowStep(ActionStep step, CaseRuntime rt)
         {
+            // —— 防止残留状态干扰 —— 
+            _lineQueue.Clear();
+            _pendingLines = 0;
+            _waitingClick = false;
+            _playingQueuedLines = false;
+
             ClearOptions();
             if (step == null) { CloseSelf(); return; }
 
+            D($"[ShowStep] try stepId={step.stepId}");
             step.RunEnter(rt);
+            D($"[ShowStep] enter-done stepId={step.stepId} (npcLine={(string.IsNullOrEmpty(step.npcLine) ? "<empty>" : "OK")})");
 
             if (!string.IsNullOrEmpty(step.npcLine))
                 ShowLeft(step.npcLine);
@@ -191,7 +211,7 @@ namespace DebtJam
                 }
 
                 // 没选项 → 进入下一步
-                var next = _card.GetNextStep(_currentStep, null, rt);
+                var next = ResolveNextStep(_currentStep, null, rt);
                 if (next != null)
                 {
                     _currentStep = next;
@@ -205,7 +225,6 @@ namespace DebtJam
         }
 
 
-        // TalkUIHub.cs 片段 —— 完整替换 BuildOptions 方法
         void BuildOptions(ActionStep step, CaseRuntime rt)
         {
             ClearOptions();
@@ -223,9 +242,9 @@ namespace DebtJam
                 Debug.LogError("[TalkUIHub] optionRoot is NOT set. Please assign a container Transform.");
                 return;
             }
-            if (!optionButtonPrefab)
+            if (!optionEntryPrefab)
             {
-                Debug.LogError("[TalkUIHub] optionButtonPrefab is NOT set. Please assign a Button prefab.");
+                Debug.LogError("[TalkUIHub] optionEntryPrefab is NOT set. Please assign a prefab (root may be a parent without Button).");
                 return;
             }
 
@@ -233,102 +252,182 @@ namespace DebtJam
             {
                 if (opt == null || !opt.ConditionsMet(rt)) continue;
 
-                // 现在允许 Button 在根物体或子物体：都能工作
-                var entry = Instantiate(optionButtonPrefab.gameObject, optionRoot);
-                // 1) 找到真正的 Button（根或子节点）
-                var btn = entry.GetComponent<Button>() ?? entry.GetComponentInChildren<Button>(true);
+                // 1) 实例化“父容器”
+                var entryGO = Instantiate(optionEntryPrefab, optionRoot);
 
+                // 2) 找到真正的 Button（根或子节点）
+                var btn = FindButtonInChildren(entryGO);
                 if (!btn)
                 {
-                    Debug.LogError("[TalkUIHub] optionButtonPrefab (root or children) must contain a Button.");
-                    Destroy(entry);
+                    Debug.LogError("[TalkUIHub] optionEntryPrefab (root or children) must contain a Button.");
+                    Destroy(entryGO);
                     continue;
                 }
 
-                // 2) 给文本赋值：搜索 TMP_Text/UGUI Text（根或子节点）
-                var tmp = entry.GetComponentInChildren<TMP_Text>(true);
-                var txt = entry.GetComponentInChildren<Text>(true);
+                // 3) 赋值文本：找 TMP_Text / UGUI Text（根或子）
+                var tmp = entryGO.GetComponentInChildren<TMP_Text>(true);
+                var txt = entryGO.GetComponentInChildren<Text>(true);
                 (tmp ? (Object)tmp : txt)?.SetText(opt.optionText);
 
-                // 3) 让“父物体也能点到”
-                //    - 在根上挂 ForwardClickToButton，把 target 指向按钮
-                //    - 根上若没有 Graphic（接收射线），自动加一张透明 Image 以接收点击
-                var forward = entry.GetComponent<ForwardClickToButton>();
-                if (!forward) forward = entry.AddComponent<ForwardClickToButton>();
-                forward.target = btn;
+                // 4) 让父容器可点，并把点击转发给子 Button（避免父子各有一个 Button 造成双触发）
+                EnsureRaycastGraphic(entryGO);
+                EnsureForwarder(entryGO, btn);
 
-                var g = entry.GetComponent<Graphic>();
-                if (!g)
-                {
-                    var img = entry.AddComponent<Image>();
-                    var c = img.color; c.a = 0f; img.color = c; // 透明但可点击
-                    img.raycastTarget = true;
-                }
-
-                // 4) 绑定点击逻辑（协程串联：玩家台词→效果台词→进入下一步）
+                // 5) 绑定点击逻辑（协程串联：玩家台词→效果台词→进入下一步）
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() =>
                 {
-                    // 点击后立刻清掉所有按钮，防止重复点
-                    ClearOptions();
-                    StartCoroutine(CoRunOptionThenNext(step, opt, rt));
+                    if (_optionRunning) { D("忽略重复点击：已有选项在执行中"); return; }
+
+                    ClearOptions(); // 立刻清掉所有按钮，防止重复点
+                    var seq = NextSeq();
+                    D($"[OptClick #{seq}] 点击了选项：\"{opt.optionText}\"");
+                    StartCoroutine(CoRunOptionThenNext(step, opt, rt, seq));
                 });
             }
         }
 
 
-        IEnumerator CoRunOptionThenNext(ActionStep step, ActionOption opt, CaseRuntime rt)
-        {
-            // 立刻把选项清掉，避免还能点到其它按钮
-            ClearOptions();
-            SetClickCatcher(true); // 进入“阅读/点击推进”模式
 
-            // 1) 先播放玩家台词（右）
+        IEnumerator CoRunOptionThenNext(ActionStep step, ActionOption opt, CaseRuntime rt, int seq)
+        {
+            _optionRunning = true;
+            SetClickCatcher(true); // 进入阅读模式
+
+            // 1) 玩家台词
             var line = opt.GetPlayerLineForUI();
+            D($"[Seq {seq}] ▶ 玩家台词：{line}");
             ShowRight(line);
             yield return null;
             while (rightBubble && rightBubble.IsTyping) yield return null;
+            D($"[Seq {seq}] ✔ 玩家台词完毕");
 
-            // 2) 执行效果（ShowLineEffect 只负责入队）
+            // 2) 执行效果（把 ShowLineEffect 入队）
+            D($"[Seq {seq}] ▶ 执行选项 Effects（可能入队多条台词）");
             opt.ApplyEffects(rt);
             if (opt.triggerCollected) MoneyManager.I?.Collect(rt);
 
-            // 3) 逐句播放队列（每句都要点击推进）
-            yield return StartCoroutine(CoPlayQueuedLines());
+            // 3) 逐句播放队列
+            yield return StartCoroutine(CoPlayQueuedLines(seq));
 
-            // 4) 结束还是进下一步
+            // 4) 结束或下一步
             if (opt.endsDialogue)
             {
+                D($"[Seq {seq}] ✔ 选项结束对话");
                 CloseSelf();
+                _optionRunning = false;
                 yield break;
             }
 
-            _currentStep = _card.GetNextStep(step, opt, rt);
+            _currentStep = ResolveNextStep(step, opt, rt);
+            D($"[Seq {seq}] ▶ 进入下一 Step（{(_currentStep != null ? _currentStep.stepId.ToString() : "null")}）");
             ShowStep(_currentStep, rt);
+
+            _optionRunning = false;
         }
 
-        IEnumerator CoPlayQueuedLines()
+
+        IEnumerator CoPlayQueuedLines(int seq)
         {
-            _playingQueuedLines = true;   // ▲ 加锁：期间点击只消费队列
+            _playingQueuedLines = true;
             try
             {
+                int i = 0;
                 while (_lineQueue.Count > 0)
                 {
                     var ln = _lineQueue.Dequeue();
+                    i++;
+                    D($"[Seq {seq}] ▶ 队列台词 {i}/{(_lineQueue.Count + 1)}（{(ln.left ? "左" : "右")}）：{ln.text}");
+
                     if (ln.left) ShowLeft(ln.text); else ShowRight(ln.text);
 
                     SetClickCatcher(true);
                     _waitingClick = true;
 
-                    // 等到“这句”被点击推进且完全结束（包括打字结束 & pending 归零）
+                    // 等这一句“打字完 + 被一次点击消费”
                     while (!AllTypingFinished()) yield return null;
+
+                    D($"[Seq {seq}] ✔ 队列台词 {i} 播放完");
                 }
             }
             finally
             {
-                _playingQueuedLines = false; // ▲ 解锁：后续点击才能推进 Step
+                _playingQueuedLines = false;
             }
         }
+
+        // 在根或子物体中找 Button
+        Button FindButtonInChildren(GameObject root)
+        {
+            if (!root) return null;
+            var b = root.GetComponent<Button>();
+            if (!b) b = root.GetComponentInChildren<Button>(true);
+            return b;
+        }
+
+        // 确保根上有可接收 Raycast 的 Graphic（没有就加一张透明 Image）
+        void EnsureRaycastGraphic(GameObject root)
+        {
+            if (!root) return;
+            var g = root.GetComponent<Graphic>();
+            if (!g)
+            {
+                var img = root.AddComponent<Image>();
+                var c = img.color; c.a = 0f; img.color = c;
+                img.raycastTarget = true;
+            }
+        }
+
+        // 确保根上有转发器，把点击转发给真正的 Button
+        void EnsureForwarder(GameObject root, Button btn)
+        {
+            if (!root || !btn) return;
+            var fwd = root.GetComponent<ForwardClickToButton>();
+            if (!fwd) fwd = root.AddComponent<ForwardClickToButton>();
+            fwd.target = btn;
+        }
+
+        // —— 解析下一步（UI 侧双保险）——
+        ActionStep ResolveNextStep(ActionStep cur, ActionOption opt, CaseRuntime rt)
+        {
+            // 1) 优先：选项自己的 nextStep（若存在）
+            if (opt != null)
+            {
+                // 你可能没有 nextStepId 字段；如果有就用它；没有就仍旧走卡片接口
+                var viaCard = _card?.GetNextStep(cur, opt, rt);
+                if (viaCard != null) return viaCard;
+
+                // 如果卡片返回空，尽量用 StepId 兜底（需要 ActionCardSO 有按 Id 索引的方法）
+                // 假设有 _card.GetStepById(int id)，没有就删掉这段或改成你的命名
+                // if (opt.nextStepId > 0) return _card?.GetStepById(opt.nextStepId);
+            }
+
+            // 2) 次之：当前 step 的默认 next
+            {
+                var viaCard = _card?.GetNextStep(cur, null, rt);
+                if (viaCard != null) return viaCard;
+                // 同理可兜底 step.nextStepId
+                // if (cur != null && cur.nextStepId > 0) return _card?.GetStepById(cur.nextStepId);
+            }
+
+            // 3) 仍然拿不到：打印详细信息帮助定位
+            var curId = cur != null ? cur.stepId.ToString() : "null";
+            var optText = opt != null ? opt.optionText : "null";
+            D($"[ResolveNextStep] FAIL: curStepId={curId}, optText=\"{optText}\"；" +
+              $"卡片返回了 null。检查该选项/Step 的 nextStep 设定和目标 Step 的 Gate 条件。");
+
+            // 可选：把所有 StepId 打印出来，便于比对
+            //try
+            //{
+            //    var allIds = _card != null ? string.Join(",", _card.GetAllStepIds()) : "no-card";
+            //    D($"[ResolveNextStep] All step ids in card: {allIds}");
+            //}
+            //catch { /* 如果没有 GetAllStepIds() 就忽略 */ }
+
+            return null;
+        }
+
+
 
 
         void ClearOptions()

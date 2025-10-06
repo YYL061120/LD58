@@ -1132,6 +1132,9 @@ Camera:
     x: 0
     y: 0
     width: 1
+<<<<<<< HEAD
+>>>>>>> parent of 5afd827 (ds)
+=======
 >>>>>>> parent of 5afd827 (ds)
     height: 1
   near clip plane: 0.3

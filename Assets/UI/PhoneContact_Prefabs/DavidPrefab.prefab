@@ -126,9 +126,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   portrait: {fileID: 2263934899351858810}
-  nameText: {fileID: 0}
-  canvasGroup: {fileID: 0}
-  crossOutOverlay: {fileID: 0}
+  titleTMP: {fileID: 0}
+  titleText: {fileID: 0}
+  subtitleTMP: {fileID: 0}
+  subtitleText: {fileID: 0}
+  disabledMask: {fileID: 0}
+  lockIcon: {fileID: 0}
+  grayscaleMaterial: {fileID: 0}
+  clickableButton: {fileID: 0}
 --- !u!1 &7350605697107797918
 GameObject:
   m_ObjectHideFlags: 0
@@ -194,7 +199,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: David
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 882452490df7afc4081ccb558c54a263, type: 2}
   m_sharedMaterial: {fileID: -1252347139640948071, guid: 882452490df7afc4081ccb558c54a263, type: 2}

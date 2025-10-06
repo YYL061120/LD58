@@ -95,9 +95,14 @@ namespace DebtJam
                 if (!so) continue;
 
                 bool allowClick = GetAllowClick(rt);
+
                 var item = Instantiate(entryPrefab, contentRoot);
-                item.Setup(so, allowClick, OnEntryClicked);
-                count++;
+
+                // 你可以按面板需要设置副标题（默认空即可，子类里设置更合适）
+                item.Setup(rt, so, subtitle: "", canInteract: allowClick, onClicked: null);
+
+                // 统一绑定点击：把“当前实例 item” 延后传给回调
+                item.BindClick(() => OnEntryClicked(item));
             }
 
             if (count == 0)

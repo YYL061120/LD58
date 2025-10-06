@@ -33,6 +33,8 @@ namespace DebtJam
         // 额外锁（对话/过场/动画等时机使用）
         int _extraLockCount = 0;
 
+        public bool IsLocked => _extraLockCount > 0 || _openedPanels.Count > 0;
+
         void Awake()
         {
             if (I && I != this) { Destroy(gameObject); return; }
@@ -61,6 +63,11 @@ namespace DebtJam
             AutoAttachWatcher(screenPanel);
             AutoAttachWatcher(smsPanel);
             AutoAttachWatcher(profilePanel);
+        }
+
+        private void Update()
+        {
+            Debug.Log(InteractableItemsController.I?.IsLocked);
         }
 
         void AutoAttachWatcher(GameObject panel)

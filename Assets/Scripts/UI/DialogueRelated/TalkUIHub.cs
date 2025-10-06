@@ -61,6 +61,40 @@ namespace DebtJam
         struct PendingLine { public bool left; public string text; }
         readonly Queue<PendingLine> _lineQueue = new();
 
+        // —— 输入防抖（禁用点击到某个时刻）——
+        float _nextInputEnableAt = 0f;
+        const float kStepDebounce = 0.6f;   // 你要的 0.6 秒
+
+        bool IsInputLocked() => Time.unscaledTime < _nextInputEnableAt;
+
+        /// <summary>在 now+seconds 前，忽略 Advance 与一切按钮点击；并临时关闭 ClickCatcher。</summary>
+        void LockInput(float seconds)
+        {
+            _nextInputEnableAt = Time.unscaledTime + Mathf.Max(0f, seconds);
+            // 期间关闭点击捕手，避免点太快消耗/推进
+            SetClickCatcher(false);
+        }
+
+        /// <summary>若已过“禁用时间”，则允许根据 Step 决定恢复点击。</summary>
+        void TryEnableInputForStep(ActionStep step)
+        {
+            if (IsInputLocked()) return; // 还没到时间，不恢复
+            if (step == null) return;
+
+            // 有选项：让玩家点按钮，不需要 ClickCatcher（按钮自己可点）
+            if (step.showOptions && step.options != null && step.options.Count > 0)
+            {
+                SetClickCatcher(false);
+                _waitingClick = false;
+            }
+            else
+            {
+                // 无选项：用点击推进当前 step
+                SetClickCatcher(true);
+                _waitingClick = true;
+            }
+        }
+
         public void QueueLine(bool onLeft, string text)
         {
             if (string.IsNullOrEmpty(text)) return;
@@ -100,7 +134,7 @@ namespace DebtJam
         public void CloseSelf()
         {
             SetClickCatcher(false);
-            items?.SetAllWorldInteractables(true);
+            InteractableItemsController.I?.Unlock("TalkUIHub.CloseSelf");
             gameObject.SetActive(false);
             OnClosed?.Invoke();
         }
@@ -111,7 +145,7 @@ namespace DebtJam
             if (leftBubble) leftBubble.gameObject.SetActive(true);
             if (rightBubble) rightBubble.gameObject.SetActive(true);
 
-            items?.SetAllWorldInteractables(false);
+            InteractableItemsController.I?.Lock("TalkUIHub.Open");
             SetClickCatcher(true);
             gameObject.SetActive(true);
 
@@ -135,45 +169,53 @@ namespace DebtJam
             // 入口 Step
             if (!CaseManager.I.runtimeById.TryGetValue(debtorId, out var rt)) return;
             _currentStep = _card?.GetStepFor(rt);
+
+            // 进入第一个 Step 前，先短暂禁用点击，防止玩家还在狂点桌面
+            LockInput(kStepDebounce);
             ShowStep(_currentStep, rt);
+            StartCoroutine(CoTryEnableInputAfterDebounce(_currentStep));
         }
+
+        IEnumerator CoTryEnableInputAfterDebounce(ActionStep step)
+        {
+            // 等到防抖时间结束
+            while (IsInputLocked()) yield return null;
+            TryEnableInputForStep(step);
+        }
+
 
         void ShowStep(ActionStep step, CaseRuntime rt)
         {
-            // —— 防止残留状态干扰 —— 
-            _lineQueue.Clear();
-            _pendingLines = 0;
-            _waitingClick = false;
-            _playingQueuedLines = false;
-
             ClearOptions();
             if (step == null) { CloseSelf(); return; }
 
-            D($"[ShowStep] try stepId={step.stepId}");
             step.RunEnter(rt);
-            D($"[ShowStep] enter-done stepId={step.stepId} (npcLine={(string.IsNullOrEmpty(step.npcLine) ? "<empty>" : "OK")})");
 
             if (!string.IsNullOrEmpty(step.npcLine))
                 ShowLeft(step.npcLine);
 
-            // 若该 Step 要出选项 → 立刻关掉点击捕手，让玩家点按钮
+            // ▲▲ 不在这里直接决定 ClickCatcher/选项可点
+            // 统一：进入任何 Step 先防抖，再由 TryEnableInputForStep 恢复
+            LockInput(kStepDebounce);
+
+            // 如果这一 Step 要出选项，先把按钮构建出来，但先不恢复输入；
+            // 输入恢复由 CoTryEnableInputAfterDebounce 来做，避免玩家立刻点击穿透。
             if (step.showOptions && step.options != null && step.options.Count > 0)
             {
                 BuildOptions(step, rt);
-                SetClickCatcher(false);
-                _waitingClick = false; // 由按钮驱动
             }
-            else
-            {
-                // 没选项 → 点击推进
-                _waitingClick = true;
-                SetClickCatcher(true);
-            }
+
+            // 交给协程在 0.6s 后“按 Step 类型”恢复输入（出选项=按钮能点 / 无选项=ClickCatcher 开）
+            StartCoroutine(CoTryEnableInputAfterDebounce(step));
         }
+
 
         // 点击推进
         public void Advance()
         {
+            // ▲ 防抖：0.6s 内忽略一切点击
+            if (IsInputLocked()) return;
+
             // 1) 若任何一侧正在打字，先跳到末尾（这次点击只用来跳字）
             if (leftBubble && leftBubble.IsTyping) { leftBubble.SkipToEnd(); return; }
             if (rightBubble && rightBubble.IsTyping) { rightBubble.SkipToEnd(); return; }
@@ -277,11 +319,15 @@ namespace DebtJam
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() =>
                 {
-                    if (_optionRunning) { D("忽略重复点击：已有选项在执行中"); return; }
+                    // ▲ 防抖：0.6s 内直接忽略按钮点击
+                    if (IsInputLocked()) return;
 
-                    ClearOptions(); // 立刻清掉所有按钮，防止重复点
+                    if (_optionRunning) return; // 防重入
+                    ClearOptions();
+
                     var seq = NextSeq();
                     D($"[OptClick #{seq}] 点击了选项：\"{opt.optionText}\"");
+
                     StartCoroutine(CoRunOptionThenNext(step, opt, rt, seq));
                 });
             }
@@ -310,7 +356,7 @@ namespace DebtJam
             // 3) 逐句播放队列
             yield return StartCoroutine(CoPlayQueuedLines(seq));
 
-            // 4) 结束或下一步
+            // 4) 结束还是进下一步
             if (opt.endsDialogue)
             {
                 D($"[Seq {seq}] ✔ 选项结束对话");
@@ -319,11 +365,17 @@ namespace DebtJam
                 yield break;
             }
 
-            _currentStep = ResolveNextStep(step, opt, rt);
+            // 先取得下一步
+            _currentStep = _card.GetNextStep(step, opt, rt);
             D($"[Seq {seq}] ▶ 进入下一 Step（{(_currentStep != null ? _currentStep.stepId.ToString() : "null")}）");
+
+            // ▲ 进入新 Step 前先防抖，避免“上一句刚播完玩家狂点”
+            LockInput(kStepDebounce);
             ShowStep(_currentStep, rt);
+            StartCoroutine(CoTryEnableInputAfterDebounce(_currentStep));
 
             _optionRunning = false;
+
         }
 
 

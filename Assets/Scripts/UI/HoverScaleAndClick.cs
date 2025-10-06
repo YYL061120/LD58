@@ -51,6 +51,7 @@ namespace DebtJam
 
         void DoClick()
         {
+            if (InteractableItemsController.I.IsLocked) return;
             if (!controller) return;
 
             switch (action)

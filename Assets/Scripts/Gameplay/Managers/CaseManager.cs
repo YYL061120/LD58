@@ -111,5 +111,13 @@ namespace DebtJam
             if (currentCase == null || currentCase.debtorId == rt.debtorId)
                 OnCaseChanged?.Invoke(rt); // 当前对象被改 → 刷新 UI
         }
+
+        // CaseManager.cs 内追加
+        public System.Collections.Generic.IEnumerable<CaseRuntime> GetVisiblePendingCases()
+        {
+            foreach (var rt in runtimeById.Values)
+                if (rt.isVisible && rt.outcome == CaseOutcome.Pending)
+                    yield return rt;
+        }
     }
 }

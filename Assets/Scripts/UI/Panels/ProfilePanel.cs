@@ -37,20 +37,33 @@ namespace DebtJam
 
         void OnEnable()
         {
-            if (CaseManager.I != null)
-                CaseManager.I.OnRosterChanged += rosterChangedHandler;
-
-            // 稳妥：晚一帧刷新，避免 CaseManager 还没 Build
-            StartCoroutine(RefreshNextFrame());
+            if (CaseManager.I != null) CaseManager.I.OnRosterChanged += Rebuild;
+            Rebuild();
         }
-
         void OnDisable()
         {
-            if (CaseManager.I != null)
-                CaseManager.I.OnRosterChanged -= rosterChangedHandler;
+            if (CaseManager.I != null) CaseManager.I.OnRosterChanged -= Rebuild;
+        }
 
-            // 可选：关闭时清空
-            ClearAll();
+        void Rebuild()
+        {
+            // 1) 清空
+            foreach (Transform t in contentRoot) Destroy(t.gameObject);
+
+            // 2) 仅渲染：可见 && Pending 的案件
+            foreach (var rt in CaseManager.I.GetVisiblePendingCases())
+            {
+                var so = CaseManager.I.GetSO(rt.debtorId);
+                var item = Instantiate(itemPrefab, contentRoot);
+
+                // 基本显示
+                item.Setup(rt, so); // 你的现有 API
+
+                // 面板各自的启用条件（例）：
+                // PhonePanel：btn.interactable = rt.hasPhone;
+                // SMSPanel：  btn.interactable = rt.hasPhone;
+                // VisitPanel：btn.interactable = rt.hasAddress; 若无地址 → 置灰并显示提示
+            }
         }
 
         void Update()

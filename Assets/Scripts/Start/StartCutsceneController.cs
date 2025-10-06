@@ -59,7 +59,7 @@ namespace DebtJam
             while (!Input.GetMouseButtonDown(0))
                 yield return null;
 
-            SceneManager.LoadScene("Game Start");
+            SceneManager.LoadScene("Game_Place");
         }
 
         IEnumerator ShowLine(string text)

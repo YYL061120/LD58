@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 namespace DebtJam
 {
-    public class EndCutscene_Best : MonoBehaviour
+    public class EndCutsceneController_Scene3 : MonoBehaviour
     {
         [Header("UI References")]
         public Image bossImage;
@@ -15,11 +15,10 @@ namespace DebtJam
 
         [Header("Timing")]
         public float fadeDuration = 1f;
-        public float autoWaitPerLine = 2.5f; // 节奏更慢一点
+        public float autoWaitPerLine = 2.5f;
 
         [Header("Audio")]
         public AudioSource typeSound;
-        public AudioSource bgm;             // 背景音乐
         public float soundCooldown = 6f;
         float lastSoundTime = -999f;
 
@@ -28,6 +27,13 @@ namespace DebtJam
 
         void Start()
         {
+            // 确保 boss 初始隐藏
+            if (bossImage)
+            {
+                Color c = bossImage.color;
+                bossImage.color = new Color(c.r, c.g, c.b, 0f);
+            }
+
             StartCoroutine(PlayCutscene());
         }
 
@@ -42,41 +48,28 @@ namespace DebtJam
 
         IEnumerator PlayCutscene()
         {
-            // BGM 渐入
-            if (bgm)
-            {
-                bgm.volume = 0;
-                bgm.Play();
-                yield return StartCoroutine(FadeAudio(bgm, 0, 0.5f, 2f));
-            }
-
-            // Boss 出现
+            // Boss 淡入
             yield return StartCoroutine(FadeImage(bossImage, 0, 1, fadeDuration));
 
-            yield return ShowLine("“Report uploaded.”");
-            yield return ShowLine("“Total: Twenty-five thousand.”");
-            yield return ShowLine("The boss appears again — calmer this time.");
-            yield return ShowLine("Boss:\nHmm… not bad. At least the company will survive a few more days.");
+            yield return ShowLine("System report: Performance achieved.");
+            yield return ShowLine("Total: Forty thousand.");
+            yield return ShowLine("The boss’s voice sounds almost warm for once.");
+            yield return ShowLine("‘Well done, Xiaobao. You finally made the numbers mean something.’");
 
             // Boss 淡出
             yield return StartCoroutine(FadeImage(bossImage, 1, 0, fadeDuration));
 
             // 玩家内心独白
-            yield return ShowLine("You smile.");
-            yield return ShowLine("Not sure if it’s relief or resignation.");
-            yield return ShowLine("The coffee on your desk has gone cold.");
-            yield return ShowLine("Its surface reflects your tired face.");
-            yield return ShowLine("You close the laptop.");
-            yield return ShowLine("The office lights are still on.");
-            yield return ShowLine("Outside, it’s already night.");
+            yield return ShowLine("You lean back in your chair.");
+            yield return ShowLine("The fan hums like a distant wave.");
+            yield return ShowLine("The rain outside has stopped.");
+            yield return ShowLine("City lights shimmer across the window.");
+            yield return ShowLine("You suddenly realize—");
+            yield return ShowLine("Victory is just another kind of delayed payment.");
 
-            // 等待点击返回主菜单
+            // 等待玩家点击回主菜单
             while (!Input.GetMouseButtonDown(0))
                 yield return null;
-
-            // BGM 渐出
-            if (bgm)
-                yield return StartCoroutine(FadeAudio(bgm, bgm.volume, 0, 2f));
 
             SceneManager.LoadScene("Mainmenu");
         }
@@ -87,7 +80,6 @@ namespace DebtJam
             skipTyping = false;
             dialogueText.text = "";
 
-            // 播放一次打字音效
             if (typeSound && Time.time - lastSoundTime > soundCooldown)
             {
                 typeSound.Play();
@@ -113,12 +105,12 @@ namespace DebtJam
 
             isTyping = false;
 
-            // 等待玩家阅读或点击跳过
             float elapsed = 0f;
             while (elapsed < autoWaitPerLine)
             {
                 if (Input.GetMouseButtonDown(0))
                     break;
+
                 elapsed += Time.deltaTime;
                 yield return null;
             }
@@ -133,17 +125,6 @@ namespace DebtJam
                 t += Time.deltaTime;
                 float a = Mathf.Lerp(from, to, t / duration);
                 img.color = new Color(c.r, c.g, c.b, a);
-                yield return null;
-            }
-        }
-
-        IEnumerator FadeAudio(AudioSource audio, float from, float to, float duration)
-        {
-            float t = 0f;
-            while (t < duration)
-            {
-                t += Time.deltaTime;
-                audio.volume = Mathf.Lerp(from, to, t / duration);
                 yield return null;
             }
         }

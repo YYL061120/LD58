@@ -1,14 +1,12 @@
-﻿using System.Collections;
+﻿using UnityEngine;
 using TMPro;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
-using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Collections;
+using UnityEngine.SceneManagement;
 
 namespace DebtJam
 {
-    public class EndCutsceneController_Scene3 : MonoBehaviour
+    public class EndCutsceneController : MonoBehaviour
     {
         [Header("UI References")]
         public Image bossImage;
@@ -29,13 +27,6 @@ namespace DebtJam
 
         void Start()
         {
-            // 确保 boss 初始隐藏
-            if (bossImage)
-            {
-                Color c = bossImage.color;
-                bossImage.color = new Color(c.r, c.g, c.b, 0f);
-            }
-
             StartCoroutine(PlayCutscene());
         }
 
@@ -50,32 +41,35 @@ namespace DebtJam
 
         IEnumerator PlayCutscene()
         {
-            // Boss 淡入
+            // Boss appears
             yield return StartCoroutine(FadeImage(bossImage, 0, 1, fadeDuration));
 
-            yield return ShowLine("System report: Performance achieved.");
-            yield return ShowLine("The boss’s voice sounds almost warm for once.");
-            yield return ShowLine("Well done, Mob. You really nailed it this time!");
-            yield return ShowLine("I told you, hard work pays off");
-            yield return ShowLine("(He raises his cup of coffee.)");
-            yield return ShowLine("I’ve approved your bonus for the month. Come see me Monday to sign it.");
+            yield return ShowLine("Boss:\n Mob... let me see how you did this week.");
+            yield return ShowLine("(Pause)");
+            yield return ShowLine("Oh no... only this much money?");
+            yield return ShowLine("Do you even realize what kind of situation our company is in right now?");
+            yield return ShowLine("(He taps the table lightly)");
+            yield return ShowLine("I don’t need excuses. I need results.");
+            yield return ShowLine("You know there are plenty of people waiting to take your seat.");
 
-            // Boss 淡出
+            // Boss fades out
             yield return StartCoroutine(FadeImage(bossImage, 1, 0, fadeDuration));
 
-            // 玩家内心独白
-            yield return ShowLine("All those late nights, those hung-up calls, the empty takeout boxes...");
-            yield return ShowLine("You lean back in your chair.");
-            yield return ShowLine("The rain outside has stopped.");
-            yield return ShowLine("City lights shimmer across the window.");
-            yield return ShowLine("You suddenly realize—");
-            yield return ShowLine("Victory is just another bill waiting to be paid.");
-
-            // 等待玩家点击回主菜单
+            // Player inner thoughts
+            yield return ShowLine("Me:\nThe air smells faintly of coffee and the hum of old machines.");
+            yield return ShowLine("Suddenly, I remember my landlord’s unread message —");
+            yield return ShowLine("‘Rent is due next week.’");
+            yield return ShowLine("...");
+            // 等待玩家点击退出
             while (!Input.GetMouseButtonDown(0))
                 yield return null;
-
+            yield return null;
             SceneManager.LoadScene("Mainmenu");
+            //#if UNITY_EDITOR
+            //UnityEditor.EditorApplication.isPlaying = false;
+            //#else
+            //Application.Quit();
+            //#endif
         }
 
         IEnumerator ShowLine(string text)
@@ -84,6 +78,7 @@ namespace DebtJam
             skipTyping = false;
             dialogueText.text = "";
 
+            // 播放音效（每隔 soundCooldown 播放一次）
             if (typeSound && Time.time - lastSoundTime > soundCooldown)
             {
                 typeSound.Play();
@@ -109,6 +104,7 @@ namespace DebtJam
 
             isTyping = false;
 
+            // 自动等待时间 + 玩家可点击跳过
             float elapsed = 0f;
             while (elapsed < autoWaitPerLine)
             {

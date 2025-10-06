@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 namespace DebtJam
 {
-    public class StartCutsceneController : MonoBehaviour
+    public class EndCutsceneController : MonoBehaviour
     {
         [Header("UI References")]
         public Image bossImage;
@@ -15,7 +15,12 @@ namespace DebtJam
 
         [Header("Timing")]
         public float fadeDuration = 1f;
-        public float waitAfterLine = 1f;
+        public float autoWaitPerLine = 2.5f;
+
+        [Header("Audio")]
+        public AudioSource typeSound;
+        public float soundCooldown = 6f;
+        float lastSoundTime = -999f;
 
         bool isTyping = false;
         bool skipTyping = false;
@@ -27,7 +32,6 @@ namespace DebtJam
 
         void Update()
         {
-            // 点击跳过正在播放的文字
             if (Input.GetMouseButtonDown(0))
             {
                 if (isTyping)
@@ -37,29 +41,35 @@ namespace DebtJam
 
         IEnumerator PlayCutscene()
         {
-            // 老板出现
+            // Boss appears
             yield return StartCoroutine(FadeImage(bossImage, 0, 1, fadeDuration));
 
-            // 老板台词
-            yield return ShowLine("Boss:\n Xiaobao, you know the company is in a pretty bad financial spot lately.");
-            yield return ShowLine("If you don’t collect enough debts this week, I might have to let you go.");
-            yield return ShowLine("But if you do well… I’ll make sure you’re rewarded.");
-            yield return ShowLine("Now, get to work!");
+            yield return ShowLine("Boss:\n Mob... let me see how you did this week.");
+            yield return ShowLine("(Pause)");
+            yield return ShowLine("Oh no... only $10,000?");
+            yield return ShowLine("Do you even realize what kind of situation our company is in right now?");
+            yield return ShowLine("(He taps the table lightly)");
+            yield return ShowLine("I don’t need excuses. I need results.");
+            yield return ShowLine("You know there are plenty of people waiting to take your seat.");
 
-            // 老板淡出
+            // Boss fades out
             yield return StartCoroutine(FadeImage(bossImage, 1, 0, fadeDuration));
 
-            // 玩家独白
-            yield return ShowLine("Me:\n“Man, the boss is laying it on thick again…");
-            yield return ShowLine("Whatever, better just get to work.");
-            yield return ShowLine("Rent’s due in less than a week—");
-            yield return ShowLine("and I’m not planning to sleep on the street.。");
-
-            // 延迟一点再切场景
+            // Player inner thoughts
+            yield return ShowLine("Me:\nThe air smells faintly of coffee and the hum of old machines.");
+            yield return ShowLine("Suddenly, I remember my landlord’s unread message —");
+            yield return ShowLine("‘Rent is due next week.’");
+            yield return ShowLine("...");
+            // 等待玩家点击退出
             while (!Input.GetMouseButtonDown(0))
                 yield return null;
-
-            SceneManager.LoadScene("Game_Place");
+            yield return null;
+            SceneManager.LoadScene("Mainmenu");
+            //#if UNITY_EDITOR
+            //UnityEditor.EditorApplication.isPlaying = false;
+            //#else
+            //Application.Quit();
+            //#endif
         }
 
         IEnumerator ShowLine(string text)
@@ -68,9 +78,15 @@ namespace DebtJam
             skipTyping = false;
             dialogueText.text = "";
 
+            // 播放音效（每隔 soundCooldown 播放一次）
+            if (typeSound && Time.time - lastSoundTime > soundCooldown)
+            {
+                typeSound.Play();
+                lastSoundTime = Time.time;
+            }
+
             float dt = 1f / Mathf.Max(1f, typewriter.charsPerSecond);
 
-            // 打字机播放
             foreach (char c in text)
             {
                 if (skipTyping)
@@ -83,21 +99,22 @@ namespace DebtJam
                 yield return new WaitForSeconds(dt);
             }
 
+            if (typeSound && typeSound.isPlaying)
+                typeSound.Stop();
+
             isTyping = false;
 
-            // 自动等待时间 + 可点击跳过逻辑
+            // 自动等待时间 + 玩家可点击跳过
             float elapsed = 0f;
-            float autoWait = 5f; // 等待 2.5 秒后自动进入下一句
-            while (elapsed < autoWait)
+            while (elapsed < autoWaitPerLine)
             {
-                if (Input.GetMouseButtonDown(0)) // 玩家点击立即跳过等待
+                if (Input.GetMouseButtonDown(0))
                     break;
 
                 elapsed += Time.deltaTime;
                 yield return null;
             }
         }
-
 
         IEnumerator FadeImage(Image img, float from, float to, float duration)
         {

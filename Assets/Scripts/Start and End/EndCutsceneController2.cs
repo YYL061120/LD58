@@ -54,7 +54,6 @@ namespace DebtJam
             yield return StartCoroutine(FadeImage(bossImage, 0, 1, fadeDuration));
 
             yield return ShowLine("“Report uploaded.”");
-            yield return ShowLine("“Total: Twenty-five thousand.”");
             yield return ShowLine("The boss appears again — calmer this time.");
             yield return ShowLine("Boss:\nHmm… not bad. At least the company will survive a few more days.");
 

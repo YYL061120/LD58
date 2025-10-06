@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using System.Collections;
 using TMPro;
-using UnityEngine.UI;
-using System.Collections;
+using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
+using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace DebtJam
 {
@@ -52,20 +54,22 @@ namespace DebtJam
             yield return StartCoroutine(FadeImage(bossImage, 0, 1, fadeDuration));
 
             yield return ShowLine("System report: Performance achieved.");
-            yield return ShowLine("Total: Forty thousand.");
             yield return ShowLine("The boss’s voice sounds almost warm for once.");
-            yield return ShowLine("‘Well done, Xiaobao. You finally made the numbers mean something.’");
+            yield return ShowLine("Well done, Mob. You really nailed it this time!");
+            yield return ShowLine("I told you, hard work pays off");
+            yield return ShowLine("(He raises his cup of coffee.)");
+            yield return ShowLine("I’ve approved your bonus for the month. Come see me Monday to sign it.");
 
             // Boss 淡出
             yield return StartCoroutine(FadeImage(bossImage, 1, 0, fadeDuration));
 
             // 玩家内心独白
+            yield return ShowLine("All those late nights, those hung-up calls, the empty takeout boxes...");
             yield return ShowLine("You lean back in your chair.");
-            yield return ShowLine("The fan hums like a distant wave.");
             yield return ShowLine("The rain outside has stopped.");
             yield return ShowLine("City lights shimmer across the window.");
             yield return ShowLine("You suddenly realize—");
-            yield return ShowLine("Victory is just another kind of delayed payment.");
+            yield return ShowLine("Victory is just another bill waiting to be paid.");
 
             // 等待玩家点击回主菜单
             while (!Input.GetMouseButtonDown(0))

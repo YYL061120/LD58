@@ -11,19 +11,16 @@ namespace DebtJam
 
         public override void Apply(CaseRuntime rt)
         {
-            // 优先找新的 DialogueBubblesUI
+            // —— 首选：把台词排队到 TalkUIHub，由它统一按顺序播放 —— 
+            var hub = Object.FindFirstObjectByType<TalkUIHub>();
+            if (hub) { hub.QueueLine(onLeft, text); return; }
+
+            // —— 兼容老 UI（若还在用 DialogueBubblesUI）——
             var ui = DialogueBubblesUI.Current ?? Object.FindFirstObjectByType<DialogueBubblesUI>();
             if (ui)
             {
-                if (onLeft) ui.ShowLeft(text); else ui.ShowRight(text);
-                return;
-            }
-
-            // 兼容老项目：若场景里还有 TalkUIHub 也支持
-            var hub = Object.FindFirstObjectByType<TalkUIHub>();
-            if (hub)
-            {
-                if (onLeft) hub.ShowLeft(text); else hub.ShowRight(text);
+                if (onLeft) ui.ShowLeft(text);
+                else ui.ShowRight(text);
             }
         }
 

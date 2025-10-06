@@ -1,84 +1,8 @@
-﻿//// Assets/Scripts/UI/TypewriterText.cs
-//using UnityEngine;
-//using UnityEngine.UI;
-//using TMPro;
-//using System.Collections;
-
-//namespace DebtJam
-//{
-//    public class TypewriterText : MonoBehaviour
-//    {
-//        [Header("Targets (任选其一)")]
-//        public Text uiText;
-//        public TMP_Text tmpText;
-
-//        [Header("Speed")]
-//        public float charsPerSecond = 28f;
-
-//        Coroutine co;
-
-//        void SetText(string s)
-//        {
-//            if (tmpText) tmpText.text = s;
-//            if (uiText) uiText.text = s;
-//        }
-//        string GetText()
-//        {
-//            if (tmpText) return tmpText.text;
-//            if (uiText) return uiText.text;
-//            return "";
-//        }
-
-//        public void Play(string text)
-//        {
-//            if (co != null) StopCoroutine(co);
-//            co = StartCoroutine(CoType(text));
-//        }
-
-//        public void Show(string text)
-//        {
-//            if (co != null) StopCoroutine(co);
-//            SetText(text);
-//        }
-
-//        public void Clear()
-//        {
-//            if (co != null) StopCoroutine(co);
-//            SetText("");
-//        }
-
-//        IEnumerator CoType(string s)
-//        {
-//            SetText("");
-//            float dt = 1f / Mathf.Max(1f, charsPerSecond);
-
-//            // 简易富文本：标签一次性写入
-//            int i = 0;
-//            while (i < s.Length)
-//            {
-//                if (s[i] == '<')
-//                {
-//                    int end = s.IndexOf('>', i);
-//                    if (end >= 0)
-//                    {
-//                        SetText(GetText() + s.Substring(i, end - i + 1));
-//                        i = end + 1;
-//                        continue;
-//                    }
-//                }
-
-//                SetText(GetText() + s[i]);
-//                i++;
-//                yield return new WaitForSeconds(dt);
-//            }
-//        }
-//    }
-//}
-// Assets/Scripts/UI/TypewriterText.cs
-using UnityEngine;
-using TMPro;
-using UnityEngine.UI;
+﻿// Assets/Scripts/UI/TypewriterText.cs
 using System.Collections;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace DebtJam
 {
@@ -91,6 +15,8 @@ namespace DebtJam
         [Range(1f, 120f)] public float charsPerSecond = 30f;
 
         Coroutine co;
+        string _full = "";
+        public bool IsTyping { get; private set; }
 
         void Awake()
         {
@@ -101,7 +27,20 @@ namespace DebtJam
             }
         }
 
-        void SetTextInternal(string s)
+        bool TargetActive()
+        {
+            var go = tmp ? tmp.gameObject : legacy ? legacy.gameObject : null;
+            return go && go.activeInHierarchy && isActiveAndEnabled;
+        }
+
+        string GetText()
+        {
+            if (tmp) return tmp.text;
+            if (legacy) return legacy.text;
+            return "";
+        }
+
+        void Set(string s)
         {
             if (tmp) tmp.text = s;
             else if (legacy) legacy.text = s;
@@ -110,33 +49,66 @@ namespace DebtJam
         public void Clear()
         {
             if (co != null) StopCoroutine(co);
-            SetTextInternal("");
+            co = null;
+            IsTyping = false;
+            _full = "";
+            Set("");
         }
 
         public void Show(string s)
         {
             if (co != null) StopCoroutine(co);
-            SetTextInternal(s);
+            co = null;
+            IsTyping = false;
+            _full = s ?? "";
+            Set(_full);
         }
 
         public void Play(string s)
         {
+            if (!TargetActive()) { Show(s); return; }  // 未激活直接瞬显，防止协程报错
+
             if (co != null) StopCoroutine(co);
-            co = StartCoroutine(CoType(s));
+            co = StartCoroutine(CoType(s ?? ""));
+        }
+
+        public void SkipToEnd()
+        {
+            if (co != null) StopCoroutine(co);
+            co = null;
+            IsTyping = false;
+            Set(_full);
         }
 
         IEnumerator CoType(string s)
         {
-            SetTextInternal("");
-            float dt = 1f / Mathf.Max(charsPerSecond, 1f);
-            foreach (char c in s)
+            _full = s;
+            IsTyping = true;
+            Set("");
+            float dt = 1f / Mathf.Max(1f, charsPerSecond);
+
+            // 简易富文本支持：遇到 <tag> 一次性写入
+            for (int i = 0; i < s.Length;)
             {
-                if (tmp) tmp.text += c;
-                else if (legacy) legacy.text += c;
-                yield return new WaitForSeconds(dt);
+                if (s[i] == '<')
+                {
+                    int end = s.IndexOf('>', i);
+                    if (end >= 0)
+                    {
+                        Set(GetText() + s.Substring(i, end - i + 1));
+                        i = end + 1;
+                        yield return null;
+                        continue;
+                    }
+                }
+
+                Set(GetText() + s[i]);
+                i++;
+                yield return new WaitForSecondsRealtime(dt);
             }
+
+            IsTyping = false;
             co = null;
         }
     }
 }
-

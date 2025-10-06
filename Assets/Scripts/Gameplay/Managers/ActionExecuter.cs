@@ -62,18 +62,22 @@ namespace DebtJam
 
         public TalkUIHub talkUI;   // 在 Inspector 绑定 TalkUIHub
 
+        // Assets/Scripts/Gameplay/Managers/ActionExecutor.cs
+        // ...
         public bool TryStartAction(ActionType type, CaseRuntime rt, System.Action closePanel, System.Action<string> showToast = null)
         {
             if (!CanDo(type, rt, out var reason))
             { showToast?.Invoke($"无法执行：{reason}"); return false; }
 
-            // 扣时
-            if (!clock.Consume(GetCost(type))) { showToast?.Invoke("今天可用时间不足"); return false; }
+            if (!clock.Consume(GetCost(type)))
+            { showToast?.Invoke("今天可用时间不足"); return false; }
 
-            // 关闭当前面板
+            // 关掉当前面板
             closePanel?.Invoke();
 
-            // 进入对话（TalkUIHub）
+            // 🔒 禁用所有交互
+            InteractableItemsController.I?.Lock("dialogue");
+
             var so = CaseManager.I.GetSO(rt.debtorId);
             var card = type switch
             {
@@ -85,16 +89,25 @@ namespace DebtJam
 
             if (talkUI)
             {
+                // 对话结束时解锁：见下一个小节
+                talkUI.OnClosed -= OnDialogueClosed;
+                talkUI.OnClosed += OnDialogueClosed;
+
                 if (type == ActionType.Call) talkUI.OpenCall(rt.debtorId, card);
                 else if (type == ActionType.SMS) talkUI.OpenSMS(rt.debtorId, card);
                 else if (type == ActionType.Visit) talkUI.OpenVisit(rt.debtorId, card);
             }
 
-            // 记录历史（给 LastActionWasCondition 用）
             rt.PushAction(type);
-
             return true;
+
+            void OnDialogueClosed()
+            {
+                talkUI.OnClosed -= OnDialogueClosed;
+                InteractableItemsController.I?.Unlock("dialogue");
+            }
         }
+
 
         /// <summary>TalkUIHub 点击选项时调用（不再扣时间）。</summary>
         public bool TryExecute(ActionCardSO card, ActionOption opt, string debtorId, out string failReason)
